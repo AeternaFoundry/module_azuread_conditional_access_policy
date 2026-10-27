@@ -123,5 +123,15 @@ resource "azuread_conditional_access_policy" "conditional_access_policies" {
       sign_in_frequency_period                  = session_controls.value.sign_in_frequency_period
     }
   }
+
+  dynamic "timeouts" {
+    for_each = each.value.timeouts != null ? [each.value.timeouts] : []
+    content {
+      create = timeouts.value.create
+      delete = timeouts.value.delete
+      read   = timeouts.value.read
+      update = timeouts.value.update
+    }
+  }
 }
 

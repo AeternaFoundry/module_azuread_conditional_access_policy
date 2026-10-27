@@ -67,6 +67,11 @@ Optional:
         - sign_in_frequency_authentication_type (optional)
         - sign_in_frequency_interval (optional)
         - sign_in_frequency_period (optional)
+    - timeouts (block):
+        - create (optional)
+        - delete (optional)
+        - read (optional)
+        - update (optional)
 EOT
 
   type = map(object({
@@ -150,6 +155,12 @@ EOT
       sign_in_frequency_interval                = optional(string)
       sign_in_frequency_period                  = optional(string)
     }))
+    timeouts = optional(object({
+      create = optional(string)
+      delete = optional(string)
+      read   = optional(string)
+      update = optional(string)
+    }))
   }))
   validation {
     condition = alltrue([
@@ -158,6 +169,14 @@ EOT
       )
     ])
     error_message = "must not be empty"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        contains(["disabled", "enabled", "enabledForReportingButNotEnforced"], v.state)
+      )
+    ])
+    error_message = "must be one of: \"disabled\", \"enabled\", \"enabledForReportingButNotEnforced\""
   }
   validation {
     condition = alltrue([
@@ -186,10 +205,26 @@ EOT
   validation {
     condition = alltrue([
       for k, v in var.conditional_access_policies : (
+        v.conditions.applications.filter == null || (contains(["exclude", "include"], v.conditions.applications.filter.mode))
+      )
+    ])
+    error_message = "must be one of: \"exclude\", \"include\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
         v.conditions.applications.filter == null || (length(v.conditions.applications.filter.rule) > 0)
       )
     ])
     error_message = "must not be empty"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.authentication_flow_transfer_methods == null || (alltrue([for x in v.conditions.authentication_flow_transfer_methods : contains(["authenticationTransfer", "deviceCodeFlow"], x)]))
+      )
+    ])
+    error_message = "must be one of: \"authenticationTransfer\", \"deviceCodeFlow\""
   }
   validation {
     condition = alltrue([
@@ -206,6 +241,14 @@ EOT
       )
     ])
     error_message = "must not be empty"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.client_applications == null || (v.conditions.client_applications.filter == null || (contains(["exclude", "include"], v.conditions.client_applications.filter.mode)))
+      )
+    ])
+    error_message = "must be one of: \"exclude\", \"include\""
   }
   validation {
     condition = alltrue([
@@ -266,6 +309,22 @@ EOT
   validation {
     condition = alltrue([
       for k, v in var.conditional_access_policies : (
+        v.conditions.users.included_guests_or_external_users == null || alltrue([for item in v.conditions.users.included_guests_or_external_users : (alltrue([for x in item.guest_or_external_user_types : contains(["b2bCollaborationGuest", "b2bCollaborationMember", "b2bDirectConnectUser", "internalGuest", "none", "otherExternalUser", "serviceProvider"], x)]))])
+      )
+    ])
+    error_message = "must be one of: \"b2bCollaborationGuest\", \"b2bCollaborationMember\", \"b2bDirectConnectUser\", \"internalGuest\", \"none\", \"otherExternalUser\", \"serviceProvider\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.users.included_guests_or_external_users == null || alltrue([for item in v.conditions.users.included_guests_or_external_users : (item.external_tenants == null || alltrue([for item in item.external_tenants : (contains(["all", "enumerated"], item.membership_kind))]))])
+      )
+    ])
+    error_message = "must be one of: \"all\", \"enumerated\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
         v.conditions.users.included_guests_or_external_users == null || alltrue([for item in v.conditions.users.included_guests_or_external_users : (item.external_tenants == null || alltrue([for item in item.external_tenants : (item.members == null || (alltrue([for x in item.members : length(x) > 0])))]))])
       )
     ])
@@ -274,10 +333,42 @@ EOT
   validation {
     condition = alltrue([
       for k, v in var.conditional_access_policies : (
+        v.conditions.users.excluded_guests_or_external_users == null || alltrue([for item in v.conditions.users.excluded_guests_or_external_users : (alltrue([for x in item.guest_or_external_user_types : contains(["b2bCollaborationGuest", "b2bCollaborationMember", "b2bDirectConnectUser", "internalGuest", "none", "otherExternalUser", "serviceProvider"], x)]))])
+      )
+    ])
+    error_message = "must be one of: \"b2bCollaborationGuest\", \"b2bCollaborationMember\", \"b2bDirectConnectUser\", \"internalGuest\", \"none\", \"otherExternalUser\", \"serviceProvider\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.users.excluded_guests_or_external_users == null || alltrue([for item in v.conditions.users.excluded_guests_or_external_users : (item.external_tenants == null || alltrue([for item in item.external_tenants : (contains(["all", "enumerated"], item.membership_kind))]))])
+      )
+    ])
+    error_message = "must be one of: \"all\", \"enumerated\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
         v.conditions.users.excluded_guests_or_external_users == null || alltrue([for item in v.conditions.users.excluded_guests_or_external_users : (item.external_tenants == null || alltrue([for item in item.external_tenants : (item.members == null || (alltrue([for x in item.members : length(x) > 0])))]))])
       )
     ])
     error_message = "must not be empty"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        alltrue([for x in v.conditions.client_app_types : contains(["all", "browser", "easSupported", "exchangeActiveSync", "mobileAppsAndDesktopClients", "other"], x)])
+      )
+    ])
+    error_message = "must be one of: \"all\", \"browser\", \"easSupported\", \"exchangeActiveSync\", \"mobileAppsAndDesktopClients\", \"other\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.devices == null || (v.conditions.devices.filter == null || (contains(["exclude", "include"], v.conditions.devices.filter.mode)))
+      )
+    ])
+    error_message = "must be one of: \"exclude\", \"include\""
   }
   validation {
     condition = alltrue([
@@ -306,10 +397,74 @@ EOT
   validation {
     condition = alltrue([
       for k, v in var.conditional_access_policies : (
+        v.conditions.platforms == null || (alltrue([for x in v.conditions.platforms.included_platforms : contains(["all", "android", "iOS", "linux", "macOS", "windows", "windowsPhone"], x)]))
+      )
+    ])
+    error_message = "must be one of: \"all\", \"android\", \"iOS\", \"linux\", \"macOS\", \"windows\", \"windowsPhone\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.platforms == null || (v.conditions.platforms.excluded_platforms == null || (alltrue([for x in v.conditions.platforms.excluded_platforms : contains(["all", "android", "iOS", "linux", "macOS", "windows", "windowsPhone"], x)])))
+      )
+    ])
+    error_message = "must be one of: \"all\", \"android\", \"iOS\", \"linux\", \"macOS\", \"windows\", \"windowsPhone\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.service_principal_risk_levels == null || (alltrue([for x in v.conditions.service_principal_risk_levels : contains(["hidden", "high", "low", "medium", "none"], x)]))
+      )
+    ])
+    error_message = "must be one of: \"hidden\", \"high\", \"low\", \"medium\", \"none\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.sign_in_risk_levels == null || (alltrue([for x in v.conditions.sign_in_risk_levels : contains(["hidden", "high", "low", "medium", "none"], x)]))
+      )
+    ])
+    error_message = "must be one of: \"hidden\", \"high\", \"low\", \"medium\", \"none\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.user_risk_levels == null || (alltrue([for x in v.conditions.user_risk_levels : contains(["hidden", "high", "low", "medium", "none"], x)]))
+      )
+    ])
+    error_message = "must be one of: \"hidden\", \"high\", \"low\", \"medium\", \"none\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.conditions.insider_risk_levels == null || (contains(["elevated", "minor", "moderate"], v.conditions.insider_risk_levels))
+      )
+    ])
+    error_message = "must be one of: \"elevated\", \"minor\", \"moderate\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
         v.grant_controls == null || (contains(["AND", "OR"], v.grant_controls.operator))
       )
     ])
-    error_message = "must be one of: AND, OR"
+    error_message = "must be one of: \"AND\", \"OR\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.grant_controls == null || (v.grant_controls.built_in_controls == null || (alltrue([for x in v.grant_controls.built_in_controls : contains(["approvedApplication", "block", "compliantApplication", "compliantDevice", "domainJoinedDevice", "mfa", "passwordChange"], x)])))
+      )
+    ])
+    error_message = "must be one of: \"approvedApplication\", \"block\", \"compliantApplication\", \"compliantDevice\", \"domainJoinedDevice\", \"mfa\", \"passwordChange\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.grant_controls == null || (v.grant_controls.authentication_strength_policy_id == null || (can(regex("^(/[^/]+/[^/]+)+$", v.grant_controls.authentication_strength_policy_id))))
+      )
+    ])
+    error_message = "must be a valid Azure resource ID"
   }
   validation {
     condition = alltrue([
@@ -330,11 +485,50 @@ EOT
   validation {
     condition = alltrue([
       for k, v in var.conditional_access_policies : (
+        v.session_controls == null || (v.session_controls.cloud_app_security_policy == null || (contains(["blockDownloads", "mcasConfigured", "monitorOnly"], v.session_controls.cloud_app_security_policy)))
+      )
+    ])
+    error_message = "must be one of: \"blockDownloads\", \"mcasConfigured\", \"monitorOnly\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.session_controls == null || (v.session_controls.persistent_browser_mode == null || (contains(["always", "never"], v.session_controls.persistent_browser_mode)))
+      )
+    ])
+    error_message = "must be one of: \"always\", \"never\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
         v.session_controls == null || (v.session_controls.sign_in_frequency == null || (v.session_controls.sign_in_frequency >= 0))
       )
     ])
     error_message = "must be at least 0"
   }
-  # Note: 24 additional provider-side validators are enforced at apply time but not mirrored as validation{} blocks here (bespoke or non-mechanically-translatable).
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.session_controls == null || (v.session_controls.sign_in_frequency_authentication_type == null || (contains(["primaryAndSecondaryAuthentication", "secondaryAuthentication"], v.session_controls.sign_in_frequency_authentication_type)))
+      )
+    ])
+    error_message = "must be one of: \"primaryAndSecondaryAuthentication\", \"secondaryAuthentication\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.session_controls == null || (v.session_controls.sign_in_frequency_interval == null || (contains(["everyTime", "timeBased"], v.session_controls.sign_in_frequency_interval)))
+      )
+    ])
+    error_message = "must be one of: \"everyTime\", \"timeBased\""
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.conditional_access_policies : (
+        v.session_controls == null || (v.session_controls.sign_in_frequency_period == null || (contains(["days", "hours"], v.session_controls.sign_in_frequency_period)))
+      )
+    ])
+    error_message = "must be one of: \"days\", \"hours\""
+  }
 }
 
